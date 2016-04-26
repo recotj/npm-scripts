@@ -7,26 +7,21 @@ const shouldRun = Boolean(pkgJSON['_where']);
 
 if (!shouldRun) return;
 
-installSemver((error) => {
-	if (error) console.error(error);
-	else checkDeps();
+const path = require('path');
+const $p = require('child_process');
+const spawn = $p.spawn;
+
+installModuleIfNecessary('semver', where, {
+	onclose(err) {
+		if (err) console.error(err);
+		else checkDeps();
+	}
 });
 
-function checkDeps(done) {
+function checkDeps() {
 	const semver = require('semver');
 
-	done = done || noop;
-	let error, pkgJSON;
-
-	try {
-		pkgJSON = require('../package.json');
-	} catch (e) {
-		error = e;
-	}
-
-	if (error) return done(error);
-
-	const projectDir = pkgJSON['_where'] || process.cwd();
+	const projectDir = where || process.cwd();
 	const devDepMap = pkgJSON['devDependencies'] || {};
 	const depMap = pkgJSON['dependencies'] || {};
 
@@ -34,75 +29,56 @@ function checkDeps(done) {
 
 	const total = deps.length;
 	let finished = 0;
-	let allInstalled = true;
 
 	deps.forEach((dep) => {
-		let shouldInstall = true;
-		let where = projectDir;
-		try {
-			const versionExisted = require(`${dep}/package.json`).version;
-			const versionExpected = devDepMap[dep] || depMap[dep];
-
-			// existed.
-			if (semver.satisfies(versionExisted, versionExpected) || /\.git$/.test(versionExpected)) {
-				shouldInstall = false;
-			} else {
-				where = undefined;
-			}
-		} catch (err) {
-		}
-
-		if (!shouldInstall) {
-			console.log(`${dep} already installed.`);
-			finished += 1;
-			return;
-		}
-
-		allInstalled = false;
-
-		console.log(`start to install ${dep} in ${where || __dirname} ...`);
-
-		const errors = [];
-
-		installModule(dep, where, {
-			onerror(error) {
-				errors.push(error);
+		installModuleIfNecessary(dep, {
+			onready() {
+				console.log(`start to install ${dep} in ${where || __dirname} ...`);
 			},
-			onclose() {
+			onclose(error, installed) {
 				finished += 1;
-				console.log(`complete:  ${finished}/${total}\n\n`);
-
-				if (finished === total) {
-					const error = errors.length === 0 ? undefined : errors.join('\n\n');
-					done(error);
+				if (installed) {
+					console.log(`complete:  ${finished}/${total}\n\n`);
+				} else {
+					console.log(`${dep} already installed`);
 				}
 			}
 		});
 	});
-
-	if (allInstalled) done();
 }
 
-function installSemver(done) {
-	done = done || noop;
+function installModuleIfNecessary(moduleId, hooks) {
+	const semver = require('semver');
+
+	const projectDir = pkgJSON['_where'] || process.cwd();
+	const devDepMap = pkgJSON['devDependencies'] || {};
+	const depMap = pkgJSON['dependencies'] || {};
 
 	let shouldInstall = true;
+	let where = projectDir;
+
 	try {
-		require.resolve('semver');
-		shouldInstall = false;
-	} catch (e) {
+		const versionExisted = require(`${moduleId}/package.json`).version;
+		const versionExpected = devDepMap[moduleId] || depMap[moduleId];
+
+		// existed and the version satisfied.
+		if (semver.satisfies(versionExisted, versionExpected) || /\.git$/.test(versionExpected)) {
+			shouldInstall = false;
+		} else {
+			where = undefined;
+		}
+	} catch (err) {
 	}
+
+	hooks = normalizeHooks(hooks);
 
 	if (!shouldInstall) {
-		console.log('semver already installed');
-		return done();
+		return hooks.onclose();
 	}
 
-	installModule('semver', {
-		onclose(error) {
-			done(error);
-		}
-	});
+	hooks.onready();
+
+	installModule(moduleId, where, hooks);
 }
 
 function installModule(moduleId, dir, hooks) {
@@ -113,30 +89,35 @@ function installModule(moduleId, dir, hooks) {
 	}
 
 	// hooks
-	hooks = hooks || {};
-	const ondata = hooks.ondata || noop;
-	const onerror = hooks.onerror || noop;
-	const onclose = hooks.onclose || noop;
+	hooks = normalizeHooks(hooks);
 
-	const spawn = require('child_process').spawn;
 	const install = spawn('npm', ['install', moduleId], {cwd: dir});
-
 	const records = {};
 
 	install.stdout.on('data', (data) => {
 		console.log(`stdout: ${data}`);
 		records.data = data;
-		ondata(data);
+		hooks.ondata(data);
 	});
 	install.stderr.on('data', (error) => {
 		console.error(`stderr: ${error}`);
 		records.error = error;
-		onerror(error);
+		hooks.onerror(error);
 	});
 	install.on('close', () => {
 		console.log(`finish ${moduleId} installation\n`);
-		onclose(records.error, records.data);
+		hooks.onclose(records.error, records.data);
 	});
+}
+
+function normalizeHooks(hooks) {
+	hooks = hooks || {};
+	return {
+		onready: hooks.onready || noop,
+		ondata: hooks.ondata || noop,
+		onerror: hooks.onerror || noop,
+		onclose: hooks.onclose || noop
+	};
 }
 
 function noop(err) {
