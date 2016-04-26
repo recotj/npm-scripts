@@ -2,7 +2,8 @@
 
 'use strict';
 
-const pkgJSON = require(`${process.cwd()}/package.json`);
+const cwd = process.cwd();
+const pkgJSON = require(`${cwd}/package.json`);
 const shouldRun = Boolean(pkgJSON['_where']);
 
 //if (!shouldRun) return;
@@ -11,12 +12,12 @@ getGulpBin((error, bin) => {
 	if (error) return console.error(error);
 
 	const fork = require('child_process').fork;
-	fork(bin, ['release']);
+	fork(bin, {cwd: cwd}, ['release']);
 });
 
 function getGulpBin(callback) {
 	const exec = require('child_process').exec;
-	exec('npm bin', (err, stdout, stderr) => {
+	exec('npm bin', {cwd: pkgJSON['_where']}, (err, stdout, stderr) => {
 		const bin = String(stdout).replace(/[\r\n\s]*$/, '');
 		callback(err, `${bin}/gulp`)
 	});
