@@ -17,6 +17,7 @@ spawn('rm', [
 	'gulpfile.js',
 	'.babelrc',
 	'.gitignore',
+	'.gitmodules',
 	'.editorconfig',
 	'.travis.yml',
 	'scripts'
