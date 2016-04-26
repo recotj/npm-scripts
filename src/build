@@ -7,7 +7,9 @@ const shouldRun = Boolean(pkgJSON['_where']);
 
 if (!shouldRun) return;
 
-getGulpBin((bin) => {
+getGulpBin((error, bin) => {
+	if (error) return console.error(error);
+
 	const fork = require('child_process').fork;
 	fork(bin, ['release']);
 });
