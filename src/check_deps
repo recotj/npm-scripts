@@ -2,19 +2,22 @@
 
 'use strict';
 
-const pkgJSON = require('../package.json');
+const pkgJSON = require(`${process.cwd()}/package.json`);
 const shouldRun = Boolean(pkgJSON['_where']);
 
 if (!shouldRun) return;
 
 const path = require('path');
-const $p = require('child_process');
-const spawn = $p.spawn;
+const spawn = require('child_process').spawn;
 
-installModuleIfNecessary('semver', where, {
-	onclose(err) {
-		if (err) console.error(err);
-		else checkDeps();
+installModuleIfNonExist('semver', {
+	onclose(err, installed) {
+		if (err) return console.error(`${err}`);
+
+		if (!installed) {
+			console.log('semver already installed.');
+		}
+		checkDeps();
 	}
 });
 
@@ -41,6 +44,27 @@ function checkDeps() {
 			}
 		});
 	});
+}
+
+function installModuleIfNonExist(moduleId, hooks) {
+	let shouldInstall = true;
+
+	try {
+		require.resolve(moduleId);
+		shouldInstall = false;
+	} catch (err) {
+	}
+
+	hooks = normalizeHooks(hooks);
+
+	if (!shouldInstall) {
+		return hooks.onclose();
+	}
+
+	const where = pkgJSON['_where'] || process.cwd();
+	hooks.onready(where);
+
+	installModule(moduleId, where, hooks);
 }
 
 function installModuleIfNecessary(moduleId, hooks) {
@@ -117,5 +141,5 @@ function normalizeHooks(hooks) {
 }
 
 function noop(err) {
-	if (err) console.error(err);
+	if (err) console.error(`${err}`);
 }

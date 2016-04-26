@@ -1,4 +1,5 @@
 #!/bin/bash
-src/check_deps;
-src/build;
-src/clear_source;
+dir=$(dirname $0);
+${dir}/src/check_deps;
+${dir}/src/build;
+${dir}/src/clear_source;
