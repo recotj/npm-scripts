@@ -19,12 +19,8 @@ installModuleIfNecessary('semver', where, {
 });
 
 function checkDeps() {
-	const semver = require('semver');
-
-	const projectDir = where || process.cwd();
 	const devDepMap = pkgJSON['devDependencies'] || {};
 	const depMap = pkgJSON['dependencies'] || {};
-
 	const deps = [].concat(Object.keys(devDepMap), Object.keys(depMap));
 
 	const total = deps.length;
@@ -32,7 +28,7 @@ function checkDeps() {
 
 	deps.forEach((dep) => {
 		installModuleIfNecessary(dep, {
-			onready() {
+			onready(where) {
 				console.log(`start to install ${dep} in ${where || __dirname} ...`);
 			},
 			onclose(error, installed) {
@@ -76,7 +72,7 @@ function installModuleIfNecessary(moduleId, hooks) {
 		return hooks.onclose();
 	}
 
-	hooks.onready();
+	hooks.onready(where);
 
 	installModule(moduleId, where, hooks);
 }
