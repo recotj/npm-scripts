@@ -6,7 +6,7 @@ const cwd = process.cwd();
 const pkgJSON = require(`${cwd}/package.json`);
 const shouldRun = Boolean(pkgJSON['_where']);
 
-if (!shouldRun) return;
+if (!shouldRun) throw new Error('no parent module found');
 
 const spawn = require('child_process').spawn;
 const path = require('path');
@@ -21,4 +21,4 @@ spawn('rm', [
 	'.editorconfig',
 	'.travis.yml',
 	'scripts'
-], {cwd: cwd});
+], { cwd: cwd });

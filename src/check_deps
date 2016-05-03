@@ -5,7 +5,7 @@
 const pkgJSON = require(`${process.cwd()}/package.json`);
 const shouldRun = Boolean(pkgJSON['_where']);
 
-if (!shouldRun) return;
+if (!shouldRun) throw new Error('no parent module found');
 
 const path = require('path');
 const spawn = require('child_process').spawn;
@@ -111,7 +111,7 @@ function installModule(moduleId, dir, hooks) {
 	// hooks
 	hooks = normalizeHooks(hooks);
 
-	const install = spawn('npm', ['install', moduleId], {cwd: dir});
+	const install = spawn('npm', ['install', moduleId], { cwd: dir });
 	const records = {};
 
 	install.stdout.on('data', (data) => {

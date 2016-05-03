@@ -6,7 +6,7 @@ const cwd = process.cwd();
 const pkgJSON = require(`${cwd}/package.json`);
 const shouldRun = Boolean(pkgJSON['_where']);
 
-if (!shouldRun) return;
+if (!shouldRun) throw new Error('no parent module found');
 
 getGulpBin((error, bin) => {
 	if (error) return console.error(error);
@@ -18,7 +18,7 @@ getGulpBin((error, bin) => {
 function getGulpBin(callback) {
 	const exec = require('child_process').exec;
 	exec('npm bin', {cwd: pkgJSON['_where']}, (err, stdout, stderr) => {
-		const bin = String(stdout).replace(/[\r\n\s]*$/, '');
+		const bin = stdout.toString('utf8').replace(/[\r\n\s]*$/, '');
 		callback(err, `${bin}/gulp`)
 	});
 }
